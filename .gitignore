@@ -1,0 +1,4 @@
+ClaudeSessions.app/
+.build/
+*.png
+.DS_Store
