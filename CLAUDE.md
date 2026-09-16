@@ -1,6 +1,7 @@
 # Claude Sessions
 
-A macOS menu bar app that lists the Claude Code sessions running right now.
+A macOS menu bar app that lists the Claude Code sessions running right now, with the
+plan usage `/usage` reports.
 
 ## Layers
 
@@ -11,14 +12,24 @@ Run `./scripts/check.sh` before every commit.
 
 ## Rules
 
-**The app only reads.** It never writes under `~/.claude`, never opens a network
-connection, and never deletes a stale record. A record it does not understand is
-skipped, not repaired.
+**The app only reads.** It never writes under `~/.claude`, never deletes a stale
+record, and never writes to the keychain. A record it does not understand is skipped,
+not repaired.
 
-**Name a state once.** If a section header states it, the cards inside it do not
-repeat it.
+**One network call, on request.** Usage is fetched with a single GET when the panel
+opens or Refresh is pressed, never on a timer. The token is Claude Code's: it is read
+from the keychain and never refreshed, because refreshing rotates it underneath Claude
+Code. An expired token shows the cached numbers and asks for Claude Code instead.
 
-**The subject leads a card.** Metadata is quieter than the thing it describes.
+**The data decides red.** A limit turns red only when its severity says critical. The
+app does not invent a threshold.
+
+**Running is green, and only running is green.** The section header names the state
+and the bubble repeats it as a glyph: green play while Claude runs, grey stop while it
+waits. No other element uses green.
+
+**The subject leads a card.** Metadata is quieter than the thing it describes. A title
+stays on one line; the full title is in the tooltip.
 
 **One click does one thing.** The card body opens the terminal tab; the chevron opens
 the context line. Nothing does both.
@@ -32,7 +43,9 @@ quote must not be able to alter an AppleScript.
 **A second copy becomes a component.** The disclosure chevron existed twice, in two
 different rotations, before it became `DisclosureChevron`.
 
-**Light only.** No dark palette, no appearance toggle, no `prefers-color-scheme`.
+**Light by default, dark on request.** The toggle next to the gear switches the panel
+and remembers the choice; the system setting is not followed. Every colour in
+`Theme.Palette` carries both values, so a view never branches on the mode.
 
 **English everywhere.** Source, comments, docs, commits, UI strings.
 

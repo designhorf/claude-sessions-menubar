@@ -7,7 +7,6 @@ struct SessionCard: View {
     @Binding var flashID: String?
     @Binding var flashText: String
     @State private var expanded: Bool
-    @State private var hovering = false
 
     init(session: Session,
          flashID: Binding<String?>,
@@ -22,48 +21,26 @@ struct SessionCard: View {
     private var isFlashing: Bool { flashID == session.id }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.md) {
-            HStack(alignment: .top, spacing: Theme.Space.lg) {
-                Text(session.subject)
-                    .font(Theme.Typography.title)
-                    .foregroundStyle(Theme.Palette.textPrimary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Theme.Space.sm)
+        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+            BubbleRow(
+                bubble: .sessionState(running: session.isBusy),
+                title: session.subject,
+                subtitle: "\(session.projectName) · \(isFlashing ? flashText : session.age)",
+                subtitleColor: isFlashing ? Theme.Palette.textPrimary : Theme.Palette.textSecondary
+            ) {
                 if session.opening != nil { disclosure }
             }
 
             if expanded, let opening = session.opening {
                 Text(opening)
-                    .font(Theme.Typography.meta)
+                    .font(Theme.Typography.rowSub)
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-
-            HStack(spacing: Theme.Space.lg) {
-                Pill(label: session.projectName,
-                     dot: Theme.projectColor(for: session.projectName))
-                Spacer(minLength: Theme.Space.sm)
-                Text(isFlashing ? flashText : session.age)
-                    .font(Theme.Typography.meta)
-                    .monospacedDigit()
-                    .foregroundStyle(isFlashing ? Theme.Palette.accent : Theme.Palette.textTertiary)
+                    .padding(.leading, Theme.Size.bubble + Theme.Space.xl)
             }
         }
-        .padding(Theme.Space.xl - 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .fill(hovering ? Theme.Palette.cardHover : Theme.Palette.card)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .strokeBorder(Theme.Palette.border, lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
+        .softCard(hoverable: true)
         .onTapGesture { open() }
         .help(tooltip)
         .contextMenu {
@@ -76,7 +53,7 @@ struct SessionCard: View {
             withAnimation(.easeOut(duration: 0.12)) { expanded.toggle() }
         } label: {
             DisclosureChevron(expanded: expanded)
-                .frame(width: 16, height: 16)
+                .frame(width: Theme.Size.chevronHitArea, height: Theme.Size.chevronHitArea)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -85,7 +62,7 @@ struct SessionCard: View {
     }
 
     private var tooltip: String {
-        var lines = ["\(session.name) · \(session.shortPath)"]
+        var lines = [session.subject, "\(session.name) · \(session.shortPath)"]
         if let last = session.lastActivityAge { lines.append("last active \(last) ago") }
         lines.append("Click to open its terminal tab")
         return lines.joined(separator: "\n")

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Sessions · Meter and icon options</title>
+<style>
+  :root {
+    color-scheme: light;
+
+    --surface: #FFFFFF;
+    --card: #F2F2F3;
+    --meterTrack: #E3E3E6;
+    --textPrimary: #111113;
+    --textSecondary: #6E6E73;
+    --textTertiary: #8E8E93;
+
+    --running: #22A55A;
+    --runningTint: #DDF3E5;
+    --stopped: #8E8E93;
+    --stoppedTint: #E3E3E6;
+
+    --radiusCard: 0.875rem;
+    --pageBg: #ECECEF;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2.5rem 2rem 4rem; background: var(--pageBg); color: var(--textPrimary); font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .pageHeader { max-width: 52rem; margin-bottom: 2.5rem; }
+  h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+  .pageHeader p { margin: 0; color: var(--textSecondary); font-size: 0.9375rem; line-height: 1.5; }
+  .block { margin-bottom: 3.5rem; }
+  h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem; }
+  .blockNote { margin: 0 0 1.25rem; color: var(--textSecondary); font-size: 0.875rem; line-height: 1.5; max-width: 52rem; }
+
+  .optionGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr)); gap: 1.25rem; }
+  .option { background: var(--surface); border-radius: 1rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; border: 1px solid rgba(0,0,0,0.05); }
+  .optionHead { display: flex; align-items: baseline; gap: 0.5rem; }
+  .optionKey { font-size: 0.75rem; font-weight: 600; color: var(--textTertiary); }
+  .optionName { font-size: 0.9375rem; font-weight: 600; flex: 1; }
+  .optionTag { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--textSecondary); }
+  .optionNote { font-size: 0.8125rem; color: var(--textSecondary); line-height: 1.45; margin: 0; }
+  .ends { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--textTertiary); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .card { background: var(--card); border-radius: var(--radiusCard); padding: 0.875rem; }
+
+  /* Meters: the ramp spans the whole track and the fill reveals it, so a short bar is
+     pale and a nearly full bar is deep. */
+  .swatch { height: 0.75rem; border-radius: 999px; background: var(--grad); }
+  .meterRows { display: flex; flex-direction: column; gap: 0.625rem; }
+  .meterLegend { display: flex; justify-content: space-between; margin-bottom: 0.3125rem; font-size: 0.8125rem; }
+  .meterLegend span:first-child { color: var(--textSecondary); }
+  .meterLegend b { font-variant-numeric: tabular-nums; }
+  .meterTrack { height: 0.5rem; border-radius: 999px; background: var(--meterTrack); overflow: hidden; }
+  .meterFill { height: 100%; border-radius: 999px; width: calc(var(--p) * 1%); min-width: 0.5rem; background: var(--grad); background-size: calc(10000% / var(--p)) 100%; background-position: left center; }
+
+  .rampInk    { --grad: linear-gradient(in oklab 90deg, #C9C9CE, #111113); }
+  .rampOcean  { --grad: linear-gradient(in oklab 90deg, #BFDBFE, #1E3A8A); }
+  .rampEmber  { --grad: linear-gradient(in oklab 90deg, #FED7AA, #9A3412); }
+  .rampViolet { --grad: linear-gradient(in oklab 90deg, #DDD6FE, #4C1D95); }
+  .rampRose   { --grad: linear-gradient(in oklab 90deg, #FECDD3, #9F1239); }
+  .rampTeal   { --grad: linear-gradient(in oklab 90deg, #B9ECE6, #115E59); }
+
+  /* Session rows */
+  .sectionLabel { display: flex; gap: 0.375rem; font-size: 0.8125rem; font-weight: 600; padding: 0.25rem 0.25rem 0; }
+  .sectionLabel span { color: var(--textTertiary); font-weight: 400; }
+  .cardStack { display: flex; flex-direction: column; gap: 0.5rem; }
+  .rowTop { display: flex; align-items: center; gap: 0.75rem; }
+  .rowText { flex: 1; min-width: 0; }
+  .rowTitle { font-size: 0.875rem; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rowSub { font-size: 0.8125rem; color: var(--textSecondary); margin-top: 0.0625rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chevron { width: 0.875rem; height: 0.875rem; flex: none; }
+
+  .state { width: 2.125rem; height: 2.125rem; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .state svg { width: 0.875rem; height: 0.875rem; }
+
+  /* S1 tinted */
+  .s1.isRunning { background: var(--runningTint); color: var(--running); }
+  .s1.isStopped { background: var(--stoppedTint); color: var(--stopped); }
+  /* S2 solid running, outlined stopped */
+  .s2.isRunning { background: var(--running); color: #FFFFFF; }
+  .s2.isStopped { background: transparent; color: var(--stopped); box-shadow: inset 0 0 0 1.5px #C9C9CE; }
+  /* S3 glyph only */
+  .s3 { width: 1.25rem; height: 1.25rem; }
+  .s3 svg { width: 0.75rem; height: 0.75rem; }
+  .s3.isRunning { color: var(--running); }
+  .s3.isStopped { color: #B4B4BA; }
+  .s3Title.isStopped { color: var(--textSecondary); }
+  /* S4 tinted with a pulse while running */
+  .s4 { position: relative; }
+  .s4.isRunning { background: var(--runningTint); color: var(--running); }
+  .s4.isRunning::after { content: ""; position: absolute; inset: 0; border-radius: 999px; box-shadow: 0 0 0 0 rgba(34, 165, 90, 0.45); animation: pulse 1.8s ease-out infinite; }
+  .s4.isStopped { background: var(--stoppedTint); color: var(--stopped); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 165, 90, 0.45); } 100% { box-shadow: 0 0 0 0.5rem rgba(34, 165, 90, 0); } }
+
+  @media (max-width: 30em) { body { padding: 1.5rem 1rem 3rem; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="iconChevronRight" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="iconPlay" viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="currentColor"/></symbol>
+    <symbol id="iconStop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<header class="pageHeader">
+  <h1>Meter ramp and session state icon</h1>
+  <p>Round two. The panel itself stays as in <code>usage-design.html</code>.</p>
+</header>
+
+<!-- Icons -->
+<section class="block">
+  <h2>1. Play for working, stop for idle</h2>
+  <p class="blockNote">Green play when a session is running, grey stop when it is not. Four ways to draw the same idea; each shows one working and two idle sessions. The project name stays in the grey line under the title.</p>
+
+  <div class="optionGrid">
+
+    <div class="option">
+      <div class="optionHead"><span class="optionKey">S1</span><span class="optionName">Tinted circle</span><span class="optionTag">recommended</span></div>
+      <div class="sectionLabel">Working<span>1</span></div>
+      <div class="card"><div class="rowTop"><span class="state s1 isRunning"><svg><use href="#iconPlay"/></svg></span><div class="rowText"><div class="rowTitle">Usage panel design</div><div class="rowSub">designhorf · 12m</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      <div class="sectionLabel">Idle<span>10</span></div>
+      <div class="cardStack">
+        <div class="card"><div class="rowTop"><span class="state s1 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle">Design workflow optimization with Claude Code</div><div class="rowSub">designhorf · 4h</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+        <div class="card"><div class="rowTop"><span class="state s1 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle">Homepage rewrite</div><div class="rowSub">website · 5d</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      </div>
+      <p class="optionNote">Same bubble as the rest of the panel, only the tint and glyph change. Green stands out without shouting.</p>
+    </div>
+
+    <div class="option">
+      <div class="optionHead"><span class="optionKey">S2</span><span class="optionName">Solid green, outlined grey</span></div>
+      <div class="sectionLabel">Working<span>1</span></div>
+      <div class="card"><div class="rowTop"><span class="state s2 isRunning"><svg><use href="#iconPlay"/></svg></span><div class="rowText"><div class="rowTitle">Usage panel design</div><div class="rowSub">designhorf · 12m</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      <div class="sectionLabel">Idle<span>10</span></div>
+      <div class="cardStack">
+        <div class="card"><div class="rowTop"><span class="state s2 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle">Design workflow optimization with Claude Code</div><div class="rowSub">designhorf · 4h</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+        <div class="card"><div class="rowTop"><span class="state s2 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle">Homepage rewrite</div><div class="rowSub">website · 5d</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      </div>
+      <p class="optionNote">The strongest difference: a running session is a filled green dot you see from across the room.</p>
+    </div>
+
+    <div class="option">
+      <div class="optionHead"><span class="optionKey">S3</span><span class="optionName">Glyph only, no circle</span></div>
+      <div class="sectionLabel">Working<span>1</span></div>
+      <div class="card"><div class="rowTop"><span class="state s3 isRunning"><svg><use href="#iconPlay"/></svg></span><div class="rowText"><div class="rowTitle s3Title">Usage panel design</div><div class="rowSub">designhorf · 12m</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      <div class="sectionLabel">Idle<span>10</span></div>
+      <div class="cardStack">
+        <div class="card"><div class="rowTop"><span class="state s3 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle s3Title isStopped">Design workflow optimization with Claude Code</div><div class="rowSub">designhorf · 4h</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+        <div class="card"><div class="rowTop"><span class="state s3 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle s3Title isStopped">Homepage rewrite</div><div class="rowSub">website · 5d</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      </div>
+      <p class="optionNote">Lightest. Idle titles also go grey, so the whole row reads inactive, not only the icon.</p>
+    </div>
+
+    <div class="option">
+      <div class="optionHead"><span class="optionKey">S4</span><span class="optionName">Tinted, pulsing while running</span></div>
+      <div class="sectionLabel">Working<span>1</span></div>
+      <div class="card"><div class="rowTop"><span class="state s4 isRunning"><svg><use href="#iconPlay"/></svg></span><div class="rowText"><div class="rowTitle">Usage panel design</div><div class="rowSub">designhorf · 12m</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      <div class="sectionLabel">Idle<span>10</span></div>
+      <div class="cardStack">
+        <div class="card"><div class="rowTop"><span class="state s4 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle">Design workflow optimization with Claude Code</div><div class="rowSub">designhorf · 4h</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+        <div class="card"><div class="rowTop"><span class="state s4 isStopped"><svg><use href="#iconStop"/></svg></span><div class="rowText"><div class="rowTitle">Homepage rewrite</div><div class="rowSub">website · 5d</div></div><svg class="chevron"><use href="#iconChevronRight"/></svg></div></div>
+      </div>
+      <p class="optionNote">S1 plus a soft green pulse, so "running" also looks alive. Motion only on the running row.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- Ramps -->
+<section class="block">
+  <h2>2. Meter: empty to full</h2>
+  <p class="blockNote">One colour from pale to deep. The ramp runs across the whole track and the bar reveals it: a nearly empty bar is pale, a nearly full one is deep and saturated. Green is left out on purpose, because green now means "running".</p>
+
+  <div class="optionGrid">
+
+    <div class="option rampInk">
+      <div class="optionHead"><span class="optionKey">R1</span><span class="optionName">Ink</span></div>
+      <div class="swatch"></div>
+      <div class="ends"><span>#C9C9CE empty</span><span>full #111113</span></div>
+      <div class="card meterRows">
+        <div><div class="meterLegend"><span>Session</span><b>15%</b></div><div class="meterTrack"><div class="meterFill" style="--p:15"></div></div></div>
+        <div><div class="meterLegend"><span>Week</span><b>48%</b></div><div class="meterTrack"><div class="meterFill" style="--p:48"></div></div></div>
+        <div><div class="meterLegend"><span>Near the limit</span><b>94%</b></div><div class="meterTrack"><div class="meterFill" style="--p:94"></div></div></div>
+      </div>
+      <p class="optionNote">Grey to black, the same black as the Refresh button. No colour at all, so green play is the only colour in the panel.</p>
+    </div>
+
+    <div class="option rampOcean">
+      <div class="optionHead"><span class="optionKey">R2</span><span class="optionName">Ocean</span><span class="optionTag">recommended</span></div>
+      <div class="swatch"></div>
+      <div class="ends"><span>#BFDBFE empty</span><span>full #1E3A8A</span></div>
+      <div class="card meterRows">
+        <div><div class="meterLegend"><span>Session</span><b>15%</b></div><div class="meterTrack"><div class="meterFill" style="--p:15"></div></div></div>
+        <div><div class="meterLegend"><span>Week</span><b>48%</b></div><div class="meterTrack"><div class="meterFill" style="--p:48"></div></div></div>
+        <div><div class="meterLegend"><span>Near the limit</span><b>94%</b></div><div class="meterTrack"><div class="meterFill" style="--p:94"></div></div></div>
+      </div>
+      <p class="optionNote">A glass filling with water: shallow light blue to deep navy. Calm, and does not clash with green.</p>
+    </div>
+
+    <div class="option rampEmber">
+      <div class="optionHead"><span class="optionKey">R3</span><span class="optionName">Ember</span></div>
+      <div class="swatch"></div>
+      <div class="ends"><span>#FED7AA empty</span><span>full #9A3412</span></div>
+      <div class="card meterRows">
+        <div><div class="meterLegend"><span>Session</span><b>15%</b></div><div class="meterTrack"><div class="meterFill" style="--p:15"></div></div></div>
+        <div><div class="meterLegend"><span>Week</span><b>48%</b></div><div class="meterTrack"><div class="meterFill" style="--p:48"></div></div></div>
+        <div><div class="meterLegend"><span>Near the limit</span><b>94%</b></div><div class="meterTrack"><div class="meterFill" style="--p:94"></div></div></div>
+      </div>
+      <p class="optionNote">Pale peach to burnt orange. Keeps the warmth of the reference and warns by itself near the top.</p>
+    </div>
+
+    <div class="option rampViolet">
+      <div class="optionHead"><span class="optionKey">R4</span><span class="optionName">Violet</span></div>
+      <div class="swatch"></div>
+      <div class="ends"><span>#DDD6FE empty</span><span>full #4C1D95</span></div>
+      <div class="card meterRows">
+        <div><div class="meterLegend"><span>Session</span><b>15%</b></div><div class="meterTrack"><div class="meterFill" style="--p:15"></div></div></div>
+        <div><div class="meterLegend"><span>Week</span><b>48%</b></div><div class="meterTrack"><div class="meterFill" style="--p:48"></div></div></div>
+        <div><div class="meterLegend"><span>Near the limit</span><b>94%</b></div><div class="meterTrack"><div class="meterFill" style="--p:94"></div></div></div>
+      </div>
+      <p class="optionNote">Lavender to deep violet. Distinctive, a bit more playful.</p>
+    </div>
+
+    <div class="option rampRose">
+      <div class="optionHead"><span class="optionKey">R5</span><span class="optionName">Rose</span></div>
+      <div class="swatch"></div>
+      <div class="ends"><span>#FECDD3 empty</span><span>full #9F1239</span></div>
+      <div class="card meterRows">
+        <div><div class="meterLegend"><span>Session</span><b>15%</b></div><div class="meterTrack"><div class="meterFill" style="--p:15"></div></div></div>
+        <div><div class="meterLegend"><span>Week</span><b>48%</b></div><div class="meterTrack"><div class="meterFill" style="--p:48"></div></div></div>
+        <div><div class="meterLegend"><span>Near the limit</span><b>94%</b></div><div class="meterTrack"><div class="meterFill" style="--p:94"></div></div></div>
+      </div>
+      <p class="optionNote">Blush to deep crimson. Reads as "filling up" and as "danger" at the same time.</p>
+    </div>
+
+    <div class="option rampTeal">
+      <div class="optionHead"><span class="optionKey">R6</span><span class="optionName">Deep teal</span></div>
+      <div class="swatch"></div>
+      <div class="ends"><span>#B9ECE6 empty</span><span>full #115E59</span></div>
+      <div class="card meterRows">
+        <div><div class="meterLegend"><span>Session</span><b>15%</b></div><div class="meterTrack"><div class="meterFill" style="--p:15"></div></div></div>
+        <div><div class="meterLegend"><span>Week</span><b>48%</b></div><div class="meterTrack"><div class="meterFill" style="--p:48"></div></div></div>
+        <div><div class="meterLegend"><span>Near the limit</span><b>94%</b></div><div class="meterTrack"><div class="meterFill" style="--p:94"></div></div></div>
+      </div>
+      <p class="optionNote">Close to green but bluer. Shown for comparison; it may blur with the running colour.</p>
+    </div>
+
+  </div>
+</section>
+
+</body>
+</html>

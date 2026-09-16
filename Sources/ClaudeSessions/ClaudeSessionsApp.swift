@@ -1,12 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// The panel is light regardless of the system setting. Forcing the appearance on the
-/// application is what actually reaches the AppKit window behind the panel, which a
-/// SwiftUI color scheme on its own does not always do.
+/// The panel starts in the appearance chosen last time, light by default.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.appearance = NSAppearance(named: .aqua)
+        PanelAppearance.stored.apply()
     }
 }
 
@@ -14,10 +12,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct ClaudeSessionsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var store = SessionStore()
+    @StateObject private var usage = UsageStore()
 
     var body: some Scene {
         MenuBarExtra {
-            PanelView(store: store)
+            PanelView(store: store, usage: usage)
         } label: {
             HStack(spacing: Theme.Space.sm) {
                 Image(systemName: "sparkle")

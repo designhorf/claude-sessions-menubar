@@ -2,3 +2,7 @@ ClaudeSessions.app/
 .build/
 *.png
 .DS_Store
+
+# Mobbin screenshots are third-party; they stay local.
+docs/references/
+docs/mobbin-references.html

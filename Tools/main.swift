@@ -1,9 +1,10 @@
 import AppKit
 import SwiftUI
 
-// Renders the panel body to a PNG so the layout can be inspected without
-// photographing the menu bar. ImageRenderer draws neither ScrollView content nor a
-// Menu, so the chrome is stood in for here and only the list is rendered for real.
+// Renders the panel to PNGs so the layout can be inspected without photographing the
+// menu bar. ImageRenderer draws neither ScrollView content nor a Menu, so the header is
+// stood in for here and PanelBody is rendered for real. Sessions are the live ones;
+// usage comes from fixtures, so no state needs the network.
 let outputDirectory = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "."
 
 let app = NSApplication.shared
@@ -11,53 +12,64 @@ app.setActivationPolicy(.accessory)
 
 struct RenderSheet: View {
     @ObservedObject var store: SessionStore
+    @ObservedObject var usage: UsageStore
     @State private var flashID: String?
     @State private var flashText = ""
-    @State private var showIdle: Bool
+    @State private var showAllIdle: Bool
+    @State private var folded: Bool
 
-    let crop: CGFloat
-
-    init(store: SessionStore, expandIdle: Bool, crop: CGFloat = .infinity) {
+    init(store: SessionStore, usage: UsageStore, folded: Bool = false, showAllIdle: Bool = false) {
         self.store = store
-        self.crop = crop
-        _showIdle = State(initialValue: expandIdle)
+        self.usage = usage
+        _folded = State(initialValue: folded)
+        _showAllIdle = State(initialValue: showAllIdle)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: Theme.Space.lg) {
+        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+            HStack {
                 Text("Claude Sessions")
                     .font(Theme.Typography.panelName)
                     .foregroundStyle(Theme.Palette.textPrimary)
                 Spacer()
-                Image(systemName: "gearshape")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                RoundGlyph(symbol: PanelAppearance.stored.toggleSymbol, diameter: Theme.Size.settingsButton,
+                           glyphSize: Theme.IconSize.settings)
+                RoundGlyph(symbol: "gearshape", diameter: Theme.Size.settingsButton,
+                           glyphSize: Theme.IconSize.settings)
             }
-            .padding(.horizontal, Theme.Space.sm)
-            .padding(.bottom, Theme.Space.lg)
-
-            SessionList(store: store, flashID: $flashID, flashText: $flashText, showIdle: $showIdle)
-                .frame(maxHeight: crop, alignment: .top)
-                .clipped()
+            .padding(.horizontal, Theme.Space.xs)
+            PanelBody(store: store, usage: usage, usageFolded: $folded, flashID: $flashID,
+                      flashText: $flashText, showAllIdle: $showAllIdle)
         }
-        .padding(Theme.Space.xl)
+        .padding(Theme.Space.panel)
         .frame(width: Theme.panelWidth)
         .background(Theme.Palette.surface)
     }
 }
 
-/// One card with its context line open, which the list never shows by default.
-struct CardSheet: View {
-    let session: Session
-    @State private var flashID: String?
-    @State private var flashText = ""
+/// Only the usage cards, for the states that do not need the session list.
+struct UsageSheet: View {
+    @ObservedObject var usage: UsageStore
+    @State var folded = false
 
     var body: some View {
-        SessionCard(session: session, flashID: $flashID, flashText: $flashText, expanded: true)
-            .padding(Theme.Space.xl)
+        UsageSection(store: usage, folded: $folded)
+            .padding(Theme.Space.panel)
             .frame(width: Theme.panelWidth)
             .background(Theme.Palette.surface)
+    }
+}
+
+enum Fixture {
+    static let now = Date()
+
+    static func usage(session: Int, weekly: Int, critical: Bool = false) -> Usage {
+        Usage(
+            session: .init(percent: session, resetsAt: now.addingTimeInterval(4 * 60), isCritical: critical),
+            weekly: .init(percent: weekly, resetsAt: now.addingTimeInterval(3 * 24 * 3600), isCritical: false),
+            claudeCodeShare: 96,
+            fetchedAt: now
+        )
     }
 }
 
@@ -79,14 +91,29 @@ let store = SessionStore()
 Task { @MainActor in
     try? await Task.sleep(nanoseconds: 2_000_000_000)
     print("sessions: \(store.sessions.count)  busy: \(store.busy.count)")
-    render(RenderSheet(store: store, expandIdle: false), to: "panel-collapsed.png")
-    render(RenderSheet(store: store, expandIdle: true, crop: 620), to: "panel-expanded.png")
-    if let first = store.sessions.first {
-        render(
-            CardSheet(session: first),
-            to: "card-open.png"
-        )
+
+    let normal = Fixture.usage(session: 15, weekly: 16)
+    let critical = Fixture.usage(session: 94, weekly: 78, critical: true)
+    render(RenderSheet(store: store, usage: UsageStore(usage: normal, phase: .idle)),
+           to: "panel-open.png")
+    render(RenderSheet(store: store, usage: UsageStore(usage: normal, phase: .idle), folded: true),
+           to: "panel-folded.png")
+    for (name, usage, phase) in [
+        ("updating", normal, UsageStore.Phase.updating),
+        ("critical", critical, .idle),
+        ("failed", normal, .failed(.offline)),
+    ] {
+        render(UsageSheet(usage: UsageStore(usage: usage, phase: phase)), to: "usage-\(name)-open.png")
+        render(UsageSheet(usage: UsageStore(usage: usage, phase: phase), folded: true), to: "usage-\(name)-folded.png")
     }
+
+    PanelAppearance.dark.apply()
+    render(RenderSheet(store: store, usage: UsageStore(usage: normal, phase: .idle))
+               .environment(\.colorScheme, .dark),
+           to: "panel-open-dark.png")
+    render(RenderSheet(store: store, usage: UsageStore(usage: critical, phase: .idle), folded: true)
+               .environment(\.colorScheme, .dark),
+           to: "panel-folded-dark.png")
     exit(0)
 }
 

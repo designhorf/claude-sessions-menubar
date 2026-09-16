@@ -1,34 +1,30 @@
 import SwiftUI
 
+/// A section title with its count, and an optional text action on the right.
 struct SectionHeader: View {
-    let icon: String
-    let iconColor: Color
     let title: String
     let count: Int
-    var collapsible: Bool = false
-    var expanded: Bool = false
-    var toggle: (() -> Void)?
+    var actionTitle: String?
+    var action: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: Theme.Space.md) {
-            Image(systemName: icon)
-                .font(.system(size: Theme.IconSize.sectionState, weight: .medium))
-                .foregroundStyle(iconColor)
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.md) {
             Text(title)
                 .font(Theme.Typography.section)
                 .foregroundStyle(Theme.Palette.textPrimary)
             Text("\(count)")
-                .font(Theme.Typography.meta)
+                .font(Theme.Typography.count)
                 .monospacedDigit()
                 .foregroundStyle(Theme.Palette.textTertiary)
             Spacer()
-            if collapsible {
-                DisclosureChevron(expanded: expanded)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.plain)
+                    .font(Theme.Typography.textButton)
+                    .foregroundStyle(Theme.Palette.textPrimary)
             }
         }
         .padding(.horizontal, Theme.Space.sm)
-        .padding(.vertical, Theme.Space.md)
-        .contentShape(Rectangle())
-        .onTapGesture { toggle?() }
+        .padding(.top, Theme.Space.xl)
     }
 }

@@ -1,45 +1,52 @@
+import AppKit
 import SwiftUI
 
 struct PanelView: View {
     @ObservedObject var store: SessionStore
-    @State private var showIdle: Bool
+    @ObservedObject var usage: UsageStore
+    @State private var showAllIdle: Bool
     @State private var flashID: String?
     @State private var flashText = ""
+    @State private var contentHeight: CGFloat = 0
+    @AppStorage("usageFolded") private var usageFolded = false
+    @AppStorage(PanelAppearance.storageKey) private var appearance: PanelAppearance = .light
 
-    init(store: SessionStore, expandIdle: Bool = false) {
+    init(store: SessionStore, usage: UsageStore, showAllIdle: Bool = false) {
         self.store = store
-        _showIdle = State(initialValue: expandIdle)
-    }
-
-    /// With nothing working, a folded list would leave the panel saying only that
-    /// nothing is happening.
-    private var idleIsOpen: Binding<Bool> {
-        Binding(
-            get: { showIdle || store.busy.isEmpty },
-            set: { showIdle = $0 }
-        )
+        self.usage = usage
+        _showAllIdle = State(initialValue: showAllIdle)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Space.lg) {
             header
-
-            if store.sessions.isEmpty {
-                emptyState
-            } else {
-                ScrollView {
-                    SessionList(store: store, flashID: $flashID, flashText: $flashText, showIdle: idleIsOpen)
-                        .padding(.bottom, Theme.Space.lg)
-                }
-                .frame(maxHeight: Theme.listMaxHeight)
+            ScrollView {
+                PanelBody(store: store, usage: usage, usageFolded: $usageFolded,
+                          flashID: $flashID, flashText: $flashText, showAllIdle: $showAllIdle)
+                    .padding(.bottom, Theme.Space.sm)
+                    .background(GeometryReader { geometry in
+                        Color.clear.preference(key: ContentHeightKey.self, value: geometry.size.height)
+                    })
             }
+            // A ScrollView has no height of its own, so with only a maximum the menu bar
+            // window shrank it to nothing and cut the list off. The measured content height
+            // is the height, up to the maximum, past which it scrolls.
+            .frame(height: min(contentHeight, Theme.listMaxHeight))
+            .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
         }
-        .padding(Theme.Space.xl)
+        .padding(Theme.Space.panel)
         .frame(width: Theme.panelWidth)
         // The panel window is a vibrant material, so it samples whatever sits behind it
         // and a dark window turns the panel grey. An opaque fill is what makes it light.
         .background(Theme.Palette.surface)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(appearance.colorScheme)
+        // Whether a MenuBarExtra window re-runs onAppear on every open is not something
+        // to rely on, so the window becoming key counts as an open too. The store
+        // collapses the two into one request.
+        .onAppear { usage.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            usage.refresh()
+        }
     }
 
     private var header: some View {
@@ -48,10 +55,22 @@ struct PanelView: View {
                 .font(Theme.Typography.panelName)
                 .foregroundStyle(Theme.Palette.textPrimary)
             Spacer()
+            appearanceToggle
             settingsMenu
         }
-        .padding(.horizontal, Theme.Space.sm)
-        .padding(.bottom, Theme.Space.lg)
+        .padding(.horizontal, Theme.Space.xs)
+    }
+
+    private var appearanceToggle: some View {
+        Button {
+            appearance = appearance.toggled
+            appearance.apply()
+        } label: {
+            RoundGlyph(symbol: appearance.toggleSymbol, diameter: Theme.Size.settingsButton,
+                       glyphSize: Theme.IconSize.settings)
+        }
+        .buttonStyle(.plain)
+        .help(appearance.toggleHelp)
     }
 
     private var settingsMenu: some View {
@@ -61,20 +80,47 @@ struct PanelView: View {
             Button("Quit Claude Sessions") { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: Theme.IconSize.settings, weight: .regular))
-                .foregroundStyle(Theme.Palette.textSecondary)
+            RoundGlyph(symbol: "gearshape", diameter: Theme.Size.settingsButton,
+                       glyphSize: Theme.IconSize.settings)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .frame(width: 18)
+        .fixedSize()
     }
+}
 
-    private var emptyState: some View {
-        Text("No sessions running")
-            .font(Theme.Typography.title)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .padding(.horizontal, Theme.Space.sm)
-            .padding(.vertical, Theme.Space.xl)
+/// Everything below the header. Kept apart from the scroll view and the menu, which
+/// `ImageRenderer` cannot draw, so the render harness can draw this for real.
+struct PanelBody: View {
+    @ObservedObject var store: SessionStore
+    @ObservedObject var usage: UsageStore
+    @Binding var usageFolded: Bool
+    @Binding var flashID: String?
+    @Binding var flashText: String
+    @Binding var showAllIdle: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+            UsageSection(store: usage, folded: $usageFolded)
+            if store.sessions.isEmpty {
+                SectionHeader(title: "Sessions", count: 0)
+                BubbleRow(
+                    bubble: IconBubble(symbol: "terminal"),
+                    title: "No sessions running",
+                    subtitle: "Start Claude Code in a terminal."
+                )
+                .softCard()
+            } else {
+                SessionList(store: store, flashID: $flashID, flashText: $flashText,
+                            showAllIdle: $showAllIdle)
+            }
+        }
+    }
+}
+
+private struct ContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

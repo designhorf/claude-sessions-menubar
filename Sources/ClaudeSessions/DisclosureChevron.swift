@@ -9,7 +9,7 @@ struct DisclosureChevron: View {
     var body: some View {
         Image(systemName: "chevron.right")
             .font(.system(size: size, weight: .semibold))
-            .foregroundStyle(Theme.Palette.textTertiary)
+            .foregroundStyle(Theme.Palette.textPrimary)
             .rotationEffect(.degrees(expanded ? 90 : 0))
     }
 }

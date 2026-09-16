@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Sessions · Open panel</title>
+<style>
+  /* Visual language adapted from Mobbin reference 03 (Whatnot, Account Controls). */
+  :root {
+    color-scheme: light;
+
+    --surface: #FFFFFF;
+    --card: #F2F2F3;
+    --bubble: #E3E3E6;
+    --meterTrack: #DDDDE0;
+
+    --textPrimary: #111113;
+    --textSecondary: #6E6E73;
+    --textTertiary: #8E8E93;
+
+    --meterFrom: #FFD84D;
+    --meterTo: #FF8A1F;
+    --meterCriticalFrom: #FF8A5B;
+    --meterCriticalTo: #E5383B;
+    --critical: #D6333A;
+
+    --running: #22A55A;
+    --runningTint: #DDF3E5;
+    --stopped: #8E8E93;
+    --stoppedTint: #E3E3E6;
+
+    --radiusCard: 0.875rem;
+    --panelWidth: 25rem;
+
+    --pageBg: #ECECEF;
+    --pageMuted: #6E6E73;
+  }
+
+  * { box-sizing: border-box; }
+
+  body { margin: 0; padding: 2.5rem 2rem 4rem; background: var(--pageBg); color: var(--textPrimary); font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .pageHeader { max-width: 52rem; margin-bottom: 2rem; }
+  .pageHeader h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+  .pageHeader p { margin: 0; color: var(--pageMuted); font-size: 0.9375rem; line-height: 1.5; }
+
+  .stage { display: flex; flex-wrap: wrap; gap: 2rem; align-items: flex-start; margin-bottom: 3rem; }
+  .column { display: flex; flex-direction: column; gap: 0.75rem; }
+  .stageLabel { font-size: 0.8125rem; font-weight: 600; display: flex; gap: 0.5rem; align-items: baseline; }
+  .stageLabel .tag { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pageMuted); }
+  .stageCaption { font-size: 0.8125rem; color: var(--pageMuted); max-width: var(--panelWidth); line-height: 1.45; margin: 0; }
+  .blockTitle { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
+
+  /* Panel */
+  .panel { width: var(--panelWidth); background: var(--surface); border-radius: 0.875rem; padding: 1rem; border: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.12), 0 0.125rem 0.375rem rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 0.5rem; }
+  .panelHeader { display: flex; align-items: center; gap: 0.5rem; padding: 0 0.125rem 0.375rem; }
+  .panelName { font-size: 1rem; font-weight: 600; flex: 1; }
+  .roundButton { width: 1.75rem; height: 1.75rem; border-radius: 999px; background: var(--card); display: inline-flex; align-items: center; justify-content: center; color: var(--textSecondary); flex: none; }
+  .roundButton svg { width: 0.875rem; height: 0.875rem; }
+  .roundButton.isSmall { width: 1.5rem; height: 1.5rem; background: var(--bubble); color: var(--textPrimary); }
+  .roundButton.isSmall svg { width: 0.75rem; height: 0.75rem; }
+
+  .card { background: var(--card); border-radius: var(--radiusCard); padding: 0.875rem; }
+  .spacer { flex: 1; }
+
+  /* Usage card */
+  .usageCard { padding: 0.75rem 0.875rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .usageHead { display: flex; align-items: center; gap: 0.5rem; }
+  .usageTitle { font-size: 0.875rem; font-weight: 600; }
+  .usageTime { font-size: 0.75rem; color: var(--textTertiary); font-variant-numeric: tabular-nums; }
+  .usageTime.isError { color: var(--critical); display: inline-flex; align-items: center; gap: 0.25rem; }
+  .usageTime svg { width: 0.75rem; height: 0.75rem; }
+  .chevron { width: 0.75rem; height: 0.75rem; color: var(--textPrimary); flex: none; }
+  .chevron.isOpen { transform: rotate(90deg); }
+
+  .limit { display: flex; flex-direction: column; gap: 0.3125rem; }
+  .limitTop { display: flex; align-items: baseline; gap: 0.5rem; }
+  .limitName { font-size: 0.8125rem; color: var(--textSecondary); flex: 1; }
+  .limitValue { font-size: 0.875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .limitValue.isCritical, .miniValue.isCritical { color: var(--critical); }
+  .limitReset { font-size: 0.6875rem; color: var(--textTertiary); font-variant-numeric: tabular-nums; }
+  .usageNote { font-size: 0.6875rem; color: var(--textTertiary); border-top: 1px solid var(--bubble); padding-top: 0.625rem; }
+  .isStale .limitValue, .isStale .miniValue, .isStale .meterFill { opacity: 0.4; }
+
+  .meterTrack { height: 0.375rem; border-radius: 999px; background: var(--meterTrack); overflow: hidden; }
+  .meterTrack.isThin { height: 0.25rem; }
+  .meterFill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--meterFrom), var(--meterTo)); min-width: 0.375rem; }
+  .meterFill.isCritical { background: linear-gradient(90deg, var(--meterCriticalFrom), var(--meterCriticalTo)); }
+
+  /* Folded A: two mini meters in one row */
+  .miniPair { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.875rem; align-items: center; }
+  .mini { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+  .miniTop { display: flex; align-items: baseline; gap: 0.375rem; }
+  .miniName { font-size: 0.75rem; color: var(--textSecondary); flex: 1; }
+  .miniValue { font-size: 0.8125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Folded B: one line with rings */
+  .ringLine { display: flex; align-items: center; gap: 0.625rem; }
+  .ringStat { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--textSecondary); }
+  .ringStat b { color: var(--textPrimary); font-variant-numeric: tabular-nums; }
+  .ring { width: 1rem; height: 1rem; flex: none; }
+
+  /* Sessions */
+  .sectionLabel { display: flex; align-items: baseline; gap: 0.375rem; padding: 0.75rem 0.25rem 0.125rem; }
+  .sectionTitle { font-size: 0.8125rem; font-weight: 600; }
+  .sectionCount { font-size: 0.8125rem; color: var(--textTertiary); font-variant-numeric: tabular-nums; }
+  .textButton { font-size: 0.8125rem; font-weight: 600; }
+  .rowTop { display: flex; align-items: center; gap: 0.75rem; }
+  .bubble { width: 2.125rem; height: 2.125rem; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .bubble svg { width: 0.875rem; height: 0.875rem; }
+  .bubble.isRunning { background: var(--runningTint); color: var(--running); }
+  .bubble.isStopped { background: var(--stoppedTint); color: var(--stopped); }
+  .rowText { flex: 1; min-width: 0; }
+  .rowTitle { font-size: 0.875rem; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rowSub { font-size: 0.8125rem; color: var(--textSecondary); margin-top: 0.0625rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .spin { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 30em) { body { padding: 1.5rem 1rem 3rem; } .panel { width: 100%; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="iconGear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.6a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.6a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g></symbol>
+    <symbol id="iconRefresh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></g></symbol>
+    <symbol id="iconPlay" viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="currentColor"/></symbol>
+    <symbol id="iconStop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></symbol>
+    <symbol id="iconChevronRight" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="iconAlert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.5h.01"/></g></symbol>
+  </defs>
+</svg>
+
+<header class="pageHeader">
+  <h1>Claude Sessions, open panel · round 2</h1>
+  <p>Session and weekly limit now live in one Usage card, much smaller, and the card folds. Folded, it still shows both numbers. Numbers are the live values from 12:34.</p>
+</header>
+
+<h2 class="blockTitle">1. Usage card, open and folded</h2>
+<div class="stage">
+
+  <div class="column">
+    <div class="stageLabel">Open</div>
+    <div class="panel">
+      <div class="card usageCard">
+        <div class="usageHead">
+          <span class="usageTitle">Usage</span>
+          <span class="spacer"></span>
+          <span class="usageTime">12:34</span>
+          <span class="roundButton isSmall"><svg><use href="#iconRefresh"/></svg></span>
+          <svg class="chevron isOpen"><use href="#iconChevronRight"/></svg>
+        </div>
+        <div class="limit">
+          <div class="limitTop"><span class="limitName">Session</span><span class="limitValue">5%</span></div>
+          <div class="meterTrack"><div class="meterFill" style="width:5%"></div></div>
+          <span class="limitReset">Resets 16:50, in 4 h 15 min</span>
+        </div>
+        <div class="limit">
+          <div class="limitTop"><span class="limitName">Week · all models</span><span class="limitValue">17%</span></div>
+          <div class="meterTrack"><div class="meterFill" style="width:17%"></div></div>
+          <span class="limitReset">Resets Sunday 08:00</span>
+        </div>
+        <div class="usageNote">Claude Code used 96% of this week.</div>
+      </div>
+    </div>
+    <p class="stageCaption">One card, one header. The time of the numbers and a small refresh button sit in the header; the chevron folds the card. Refresh and fold are separate targets.</p>
+  </div>
+
+  <div class="column">
+    <div class="stageLabel">Folded, A <span class="tag">recommended</span></div>
+    <div class="panel">
+      <div class="card usageCard">
+        <div class="miniPair">
+          <div class="mini">
+            <div class="miniTop"><span class="miniName">Session</span><span class="miniValue">5%</span></div>
+            <div class="meterTrack isThin"><div class="meterFill" style="width:5%"></div></div>
+          </div>
+          <div class="mini">
+            <div class="miniTop"><span class="miniName">Week</span><span class="miniValue">17%</span></div>
+            <div class="meterTrack isThin"><div class="meterFill" style="width:17%"></div></div>
+          </div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+    </div>
+    <p class="stageCaption">Both limits side by side, each with its number and a thin bar. Reset times, refresh and the note appear when opened.</p>
+
+    <div class="stageLabel" style="margin-top:1.25rem">Folded, B</div>
+    <div class="panel">
+      <div class="card usageCard">
+        <div class="ringLine">
+          <span class="usageTitle">Usage</span>
+          <span class="spacer"></span>
+          <span class="ringStat">
+            <svg class="ring" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="#DDDDE0" stroke-width="2.4"/><circle cx="8" cy="8" r="6" fill="none" stroke="#FF8A1F" stroke-width="2.4" stroke-dasharray="37.7" stroke-dashoffset="35.8" transform="rotate(-90 8 8)" stroke-linecap="round"/></svg>
+            Session <b>5%</b>
+          </span>
+          <span class="ringStat">
+            <svg class="ring" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="#DDDDE0" stroke-width="2.4"/><circle cx="8" cy="8" r="6" fill="none" stroke="#FF8A1F" stroke-width="2.4" stroke-dasharray="37.7" stroke-dashoffset="31.3" transform="rotate(-90 8 8)" stroke-linecap="round"/></svg>
+            Week <b>17%</b>
+          </span>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+    </div>
+    <p class="stageCaption">One line, rings instead of bars. The shortest, but a ring at 5% is hard to read.</p>
+  </div>
+
+</div>
+
+<h2 class="blockTitle">2. Whole panel</h2>
+<div class="stage">
+
+  <div class="column">
+    <div class="stageLabel">Usage folded (A)</div>
+    <div class="panel">
+      <div class="panelHeader">
+        <span class="panelName">Claude Sessions</span>
+        <span class="roundButton"><svg><use href="#iconGear"/></svg></span>
+      </div>
+      <div class="card usageCard">
+        <div class="miniPair">
+          <div class="mini">
+            <div class="miniTop"><span class="miniName">Session</span><span class="miniValue">5%</span></div>
+            <div class="meterTrack isThin"><div class="meterFill" style="width:5%"></div></div>
+          </div>
+          <div class="mini">
+            <div class="miniTop"><span class="miniName">Week</span><span class="miniValue">17%</span></div>
+            <div class="meterTrack isThin"><div class="meterFill" style="width:17%"></div></div>
+          </div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+
+      <div class="sectionLabel"><span class="sectionTitle">Working</span><span class="sectionCount">1</span></div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isRunning"><svg><use href="#iconPlay"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Usage panel design</div><div class="rowSub">designhorf · 50m</div></div>
+        </div>
+      </div>
+
+      <div class="sectionLabel"><span class="sectionTitle">Idle</span><span class="sectionCount">10</span><span class="spacer"></span><span class="textButton">Show all</span></div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isStopped"><svg><use href="#iconStop"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Session scanner cleanup</div><div class="rowSub">designhorf · 6m</div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isStopped"><svg><use href="#iconStop"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Design workflow optimization with Claude Code</div><div class="rowSub">designhorf · 4h</div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isStopped"><svg><use href="#iconStop"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Wallpaper editing notes</div><div class="rowSub">designhorf · 5d</div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+    </div>
+    <p class="stageCaption">Folded, usage takes one short row and the sessions move up. The panel remembers whether usage was folded.</p>
+  </div>
+
+  <div class="column">
+    <div class="stageLabel">Usage open</div>
+    <div class="panel">
+      <div class="panelHeader">
+        <span class="panelName">Claude Sessions</span>
+        <span class="roundButton"><svg><use href="#iconGear"/></svg></span>
+      </div>
+      <div class="card usageCard">
+        <div class="usageHead">
+          <span class="usageTitle">Usage</span>
+          <span class="spacer"></span>
+          <span class="usageTime">12:34</span>
+          <span class="roundButton isSmall"><svg><use href="#iconRefresh"/></svg></span>
+          <svg class="chevron isOpen"><use href="#iconChevronRight"/></svg>
+        </div>
+        <div class="limit">
+          <div class="limitTop"><span class="limitName">Session</span><span class="limitValue">5%</span></div>
+          <div class="meterTrack"><div class="meterFill" style="width:5%"></div></div>
+          <span class="limitReset">Resets 16:50, in 4 h 15 min</span>
+        </div>
+        <div class="limit">
+          <div class="limitTop"><span class="limitName">Week · all models</span><span class="limitValue">17%</span></div>
+          <div class="meterTrack"><div class="meterFill" style="width:17%"></div></div>
+          <span class="limitReset">Resets Sunday 08:00</span>
+        </div>
+        <div class="usageNote">Claude Code used 96% of this week.</div>
+      </div>
+
+      <div class="sectionLabel"><span class="sectionTitle">Working</span><span class="sectionCount">1</span></div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isRunning"><svg><use href="#iconPlay"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Usage panel design</div><div class="rowSub">designhorf · 50m</div></div>
+        </div>
+      </div>
+
+      <div class="sectionLabel"><span class="sectionTitle">Idle</span><span class="sectionCount">10</span><span class="spacer"></span><span class="textButton">Show all</span></div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isStopped"><svg><use href="#iconStop"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Session scanner cleanup</div><div class="rowSub">designhorf · 6m</div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isStopped"><svg><use href="#iconStop"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Design workflow optimization with Claude Code</div><div class="rowSub">designhorf · 4h</div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+      <div class="card">
+        <div class="rowTop">
+          <span class="bubble isStopped"><svg><use href="#iconStop"/></svg></span>
+          <div class="rowText"><div class="rowTitle">Wallpaper editing notes</div><div class="rowSub">designhorf · 5d</div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2 class="blockTitle">3. States of the usage card</h2>
+<div class="stage">
+
+  <div class="column">
+    <div class="stageLabel">Updating</div>
+    <div class="panel">
+      <div class="card usageCard isStale">
+        <div class="usageHead">
+          <span class="usageTitle">Usage</span><span class="spacer"></span>
+          <span class="usageTime">Updating</span>
+          <span class="roundButton isSmall"><svg class="spin"><use href="#iconRefresh"/></svg></span>
+          <svg class="chevron isOpen"><use href="#iconChevronRight"/></svg>
+        </div>
+        <div class="limit"><div class="limitTop"><span class="limitName">Session</span><span class="limitValue">5%</span></div><div class="meterTrack"><div class="meterFill" style="width:5%"></div></div><span class="limitReset">Resets 16:50, in 4 h 15 min</span></div>
+        <div class="limit"><div class="limitTop"><span class="limitName">Week · all models</span><span class="limitValue">17%</span></div><div class="meterTrack"><div class="meterFill" style="width:17%"></div></div><span class="limitReset">Resets Sunday 08:00</span></div>
+      </div>
+      <div class="card usageCard isStale">
+        <div class="miniPair">
+          <div class="mini"><div class="miniTop"><span class="miniName">Session</span><span class="miniValue">5%</span></div><div class="meterTrack isThin"><div class="meterFill" style="width:5%"></div></div></div>
+          <div class="mini"><div class="miniTop"><span class="miniName">Week</span><span class="miniValue">17%</span></div><div class="meterTrack isThin"><div class="meterFill" style="width:17%"></div></div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+    </div>
+    <p class="stageCaption">Open and folded. Folded, the numbers simply fade until the new ones arrive.</p>
+  </div>
+
+  <div class="column">
+    <div class="stageLabel">Near the limit</div>
+    <div class="panel">
+      <div class="card usageCard">
+        <div class="usageHead">
+          <span class="usageTitle">Usage</span><span class="spacer"></span>
+          <span class="usageTime">15:38</span>
+          <span class="roundButton isSmall"><svg><use href="#iconRefresh"/></svg></span>
+          <svg class="chevron isOpen"><use href="#iconChevronRight"/></svg>
+        </div>
+        <div class="limit"><div class="limitTop"><span class="limitName">Session</span><span class="limitValue isCritical">94%</span></div><div class="meterTrack"><div class="meterFill isCritical" style="width:94%"></div></div><span class="limitReset">Resets 16:50, in 1 h 12 min</span></div>
+        <div class="limit"><div class="limitTop"><span class="limitName">Week · all models</span><span class="limitValue">78%</span></div><div class="meterTrack"><div class="meterFill" style="width:78%"></div></div><span class="limitReset">Resets Sunday 08:00</span></div>
+      </div>
+      <div class="card usageCard">
+        <div class="miniPair">
+          <div class="mini"><div class="miniTop"><span class="miniName">Session</span><span class="miniValue isCritical">94%</span></div><div class="meterTrack isThin"><div class="meterFill isCritical" style="width:94%"></div></div></div>
+          <div class="mini"><div class="miniTop"><span class="miniName">Week</span><span class="miniValue">78%</span></div><div class="meterTrack isThin"><div class="meterFill" style="width:78%"></div></div></div>
+          <svg class="chevron"><use href="#iconChevronRight"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="stageLabel">Could not update</div>
+    <div class="panel">
+      <div class="card usageCard isStale">
+        <div class="usageHead">
+          <span class="usageTitle">Usage</span><span class="spacer"></span>
+          <span class="usageTime isError"><svg><use href="#iconAlert"/></svg>Offline · 12:34</span>
+          <span class="roundButton isSmall"><svg><use href="#iconRefresh"/></svg></span>
+          <svg class="chevron isOpen"><use href="#iconChevronRight"/></svg>
+        </div>
+        <div class="limit"><div class="limitTop"><span class="limitName">Session</span><span class="limitValue">5%</span></div><div class="meterTrack"><div class="meterFill" style="width:5%"></div></div><span class="limitReset">Resets 16:50, in 4 h 15 min</span></div>
+        <div class="limit"><div class="limitTop"><span class="limitName">Week · all models</span><span class="limitValue">17%</span></div><div class="meterTrack"><div class="meterFill" style="width:17%"></div></div><span class="limitReset">Resets Sunday 08:00</span></div>
+      </div>
+    </div>
+    <p class="stageCaption">The time turns red and names the problem; the numbers stay, faded. Folded, the numbers fade the same way.</p>
+  </div>
+
+</div>
+
+</body>
+</html>
