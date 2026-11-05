@@ -4,12 +4,9 @@ import SwiftUI
 /// disclosure in the panel so the gesture reads the same everywhere.
 struct DisclosureChevron: View {
     let expanded: Bool
-    var size: CGFloat = Theme.IconSize.chevron
 
     var body: some View {
-        Image(systemName: "chevron.right")
-            .font(.system(size: size, weight: .semibold))
-            .foregroundStyle(Theme.Palette.textTertiary)
+        IconView(icon: .chevron, size: Theme.IconSize.chevron)
             .rotationEffect(.degrees(expanded ? 90 : 0))
     }
 }

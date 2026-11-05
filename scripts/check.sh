@@ -4,6 +4,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 fail=0
+mkdir -p .build
 report() { echo "  FAIL  $1"; shift; printf '%s\n' "$@" | sed 's/^/        /'; fail=1; }
 pass()   { echo "  ok    $1"; }
 
@@ -14,9 +15,14 @@ hits=$(grep -nE 'Color\(hex:|Color\(red:|\.font\(\.system\(size: [0-9]|cornerRad
 [ -z "$hits" ] && pass "no hardcoded colours or sizes outside Theme.swift" \
                 || report "hardcoded value outside Theme.swift" "$hits"
 
-# The app is light only.
-hits=$(grep -rn 'prefers-color-scheme\|NSAppearanceNameDarkAqua\|colorScheme == .dark' Sources/ || true)
-[ -z "$hits" ] && pass "light only" || report "dark appearance branch" "$hits"
+# Every glyph comes from one icon set, so an SF Symbol is a mismatch waiting to be seen.
+hits=$(grep -n 'systemName' $VIEWS || true)
+[ -z "$hits" ] && pass "icons only from Icon.swift" || report "SF Symbol in the panel" "$hits"
+
+# Light and dark live in Theme.Palette; a view never branches on the mode.
+hits=$(grep -rnE 'colorScheme == \.dark|colorScheme == \.light|\.darkAqua' Sources/ \
+        | grep -v -e 'Theme.swift' -e 'PanelAppearance.swift' || true)
+[ -z "$hits" ] && pass "appearance only in Theme and PanelAppearance" || report "view branches on appearance" "$hits"
 
 # Nothing but English ships.
 # This file is excluded because it has to spell the letters it forbids.
@@ -28,12 +34,34 @@ hits=$(grep -rnE --exclude=check.sh '[áéíóöőúüűÁÉÍÓÖŐÚÜŰ]' \
 hits=$(grep -rn '/Users/' Sources/ Tools/ build-app.sh README.md 2>/dev/null || true)
 [ -z "$hits" ] && pass "no absolute home paths" || report "absolute path" "$hits"
 
+# The app makes one kind of network call, a GET for usage, and only from one file.
+hits=$(grep -rln 'URLSession\|URLRequest' Sources/ | grep -v 'UsageClient.swift' || true)
+[ -z "$hits" ] && pass "network only in UsageClient.swift" || report "network call outside UsageClient.swift" "$hits"
+
+# The sign-in belongs to Claude Code: read it, never refresh, write or delete it.
+hits=$(grep -rnE 'refreshToken|httpMethod|SecItemAdd|SecItemUpdate|SecItemDelete' Sources/ || true)
+[ -z "$hits" ] && pass "credentials read only" || report "credential write or non-GET request" "$hits"
+
+# Stopping a dev server is the one thing the app does to another process, from one file.
+hits=$(grep -rnE '\bkill\(|SIGTERM|SIGKILL' Sources/ | grep -v 'ServerStopper.swift' || true)
+[ -z "$hits" ] && pass "signals only in ServerStopper.swift" || report "signal sent outside ServerStopper.swift" "$hits"
+
 # It has to compile.
 if swiftc -typecheck -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
-     -target arm64-apple-macos13.0 Sources/ClaudeSessions/*.swift 2>/tmp/cs-typecheck; then
+     -target arm64-apple-macos13.0 Sources/ClaudeSessions/*.swift 2>.build/cs-typecheck; then
     pass "typechecks"
 else
-    report "typecheck failed" "$(head -20 /tmp/cs-typecheck)"
+    report "typecheck failed" "$(head -20 .build/cs-typecheck)"
+fi
+
+# The usage parsing and wording are pure, so they are tested without the app.
+if swiftc -sdk "$(xcrun --sdk macosx --show-sdk-path)" -target arm64-apple-macos13.0 \
+     Sources/ClaudeSessions/Usage.swift Sources/ClaudeSessions/UsageText.swift \
+     Tools/UsageTests/main.swift -o .build/cs-usage-tests 2>.build/cs-usage-build \
+   && .build/cs-usage-tests; then
+    :
+else
+    report "usage tests failed" "$(head -20 .build/cs-usage-build)"
 fi
 
 echo

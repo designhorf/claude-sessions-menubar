@@ -22,7 +22,7 @@ enum SessionScanner {
     // MARK: - Entry point
 
     static func scan() -> [Session] {
-        let running = runningProcesses()
+        let running = ProcessTable.snapshot().starts
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: sessionsDir, includingPropertiesForKeys: nil
         ) else { return [] }
@@ -62,29 +62,6 @@ enum SessionScanner {
         return sessions
             .sorted { $0.startedAt > $1.startedAt }
             .filter { seen.insert($0.id).inserted }
-    }
-
-    // MARK: - Which pids are actually running
-
-    /// Start time per pid, straight from the kernel. Cheaper than spawning `ps` every
-    /// few seconds, and the start time doubles as the identity check above.
-    private static func runningProcesses() -> [Int32: Date] {
-        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
-        var size = 0
-        guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return [:] }
-
-        var entries = [kinfo_proc](repeating: kinfo_proc(),
-                                   count: size / MemoryLayout<kinfo_proc>.stride)
-        guard sysctl(&mib, 4, &entries, &size, nil, 0) == 0 else { return [:] }
-
-        var starts: [Int32: Date] = [:]
-        for entry in entries[0 ..< (size / MemoryLayout<kinfo_proc>.stride)] {
-            let started = entry.kp_proc.p_un.__p_starttime
-            starts[entry.kp_proc.p_pid] = Date(
-                timeIntervalSince1970: Double(started.tv_sec) + Double(started.tv_usec) / 1_000_000
-            )
-        }
-        return starts
     }
 
     // MARK: - What a transcript says about itself
