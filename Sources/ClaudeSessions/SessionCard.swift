@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// A session as a card. The card body jumps to the terminal tab; the chevron is the
-/// only thing that opens the context line, so a click never does two things at once.
+/// A session as a row. The row body jumps to the terminal tab; the chevron is the only
+/// thing that opens the context line, so a click never does two things at once.
 struct SessionCard: View {
     let session: Session
     @Binding var flashID: String?
     @Binding var flashText: String
     @State private var expanded: Bool
-    @State private var hovering = false
 
     init(session: Session,
          flashID: Binding<String?>,
@@ -22,16 +21,22 @@ struct SessionCard: View {
     private var isFlashing: Bool { flashID == session.id }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.md) {
-            HStack(alignment: .top, spacing: Theme.Space.lg) {
-                Text(session.subject)
-                    .font(Theme.Typography.title)
-                    .foregroundStyle(Theme.Palette.textPrimary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Theme.Space.sm)
-                if session.opening != nil { disclosure }
+        VStack(alignment: .leading, spacing: 0) {
+            ListRow(
+                icon: session.isBusy ? .play : .stop,
+                iconTint: session.isBusy ? Theme.Palette.running : Theme.Palette.textSecondary,
+                title: session.subject,
+                detail: session.projectName,
+                age: session.age,
+                flash: isFlashing ? flashText : nil,
+                action: open
+            ) {
+                // The slot stays without a chevron too, so every age lines up down the list.
+                if session.opening != nil {
+                    disclosure
+                } else {
+                    Color.clear.frame(width: Theme.Size.miniButton, height: Theme.Size.miniButton)
+                }
             }
 
             if expanded, let opening = session.opening {
@@ -40,31 +45,12 @@ struct SessionCard: View {
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-
-            HStack(spacing: Theme.Space.lg) {
-                Pill(label: session.projectName,
-                     dot: Theme.projectColor(for: session.projectName))
-                Spacer(minLength: Theme.Space.sm)
-                Text(isFlashing ? flashText : session.age)
-                    .font(Theme.Typography.meta)
-                    .monospacedDigit()
-                    .foregroundStyle(isFlashing ? Theme.Palette.accent : Theme.Palette.textTertiary)
+                    .padding(.leading, Theme.Space.rowTextIndent)
+                    .padding(.trailing, Theme.Space.xl)
+                    .padding(.bottom, Theme.Space.lg)
+                    .transition(.opacity)
             }
         }
-        .padding(Theme.Space.xl - 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .fill(hovering ? Theme.Palette.cardHover : Theme.Palette.card)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .strokeBorder(Theme.Palette.border, lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
-        .onTapGesture { open() }
         .help(tooltip)
         .contextMenu {
             Button("Copy resume command") { copyResumeCommand() }
@@ -73,10 +59,10 @@ struct SessionCard: View {
 
     private var disclosure: some View {
         Button {
-            withAnimation(.easeOut(duration: 0.12)) { expanded.toggle() }
+            withAnimation(Theme.Motion.disclose) { expanded.toggle() }
         } label: {
             DisclosureChevron(expanded: expanded)
-                .frame(width: 16, height: 16)
+                .frame(width: Theme.Size.miniButton, height: Theme.Size.miniButton)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -85,7 +71,7 @@ struct SessionCard: View {
     }
 
     private var tooltip: String {
-        var lines = ["\(session.name) · \(session.shortPath)"]
+        var lines = [session.subject, "\(session.name) · \(session.shortPath)"]
         if let last = session.lastActivityAge { lines.append("last active \(last) ago") }
         lines.append("Click to open its terminal tab")
         return lines.joined(separator: "\n")
