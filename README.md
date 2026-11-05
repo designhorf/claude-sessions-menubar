@@ -32,11 +32,22 @@ downstream hardcodes a value.
 The panel is light by default. The moon and sun button next to the gear switches it to dark
 and back, and the choice is remembered; the system setting is not followed.
 
+The menu bar title reads `1/12  A: 12% W: 25%`: working over open sessions, then the
+5-hour window and the weekly limit.
+
 Usage leads, as one card for the session and the weekly limit. Open, each limit has a
 bar and its reset time, and the header holds the fetch time and a refresh button.
 Folded, it is one line with a ring per limit; the panel remembers the choice. Below it,
 Working and Idle. Idle shows the three most recent sessions and folds the rest behind
 "Show all".
+
+## Servers
+
+Below the sessions, the Servers section lists the local dev servers: project, port, how
+long it has run and how much memory it and its children hold. Clicking a card opens it in
+the browser; the power button stops it, launcher chain included, so `pnpm dev` does not
+start it again. Stop all asks for a second click. `Tools/ServerProbe` lists the live
+servers from the terminal and, with `--stop <port>`, stops one.
 
 ## Looking at the layout
 
@@ -62,7 +73,7 @@ Nothing is written. The only network call is the usage GET below.
 | Started at, working directory, idle or busy | the same file |
 | Subject | the last `ai-title` record in `~/.claude/projects/*/<sessionId>.jsonl` |
 | Usage on launch | `cachedUsageUtilization` in `~/.claude.json`, what Claude Code last fetched |
-| Usage on open and on Refresh | `GET https://api.anthropic.com/api/oauth/usage`, the endpoint `/usage` calls |
+| Usage on open, on Refresh, and every 5 min while a session works | `GET https://api.anthropic.com/api/oauth/usage`, the endpoint `/usage` calls |
 | The token for that call | the `Claude Code-credentials` item in the login keychain, read only |
 
 The usage endpoint is not a documented API. When it fails, the panel keeps the last

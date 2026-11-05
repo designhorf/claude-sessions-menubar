@@ -54,7 +54,10 @@ enum UsageClient {
         }
 
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        if status == 401 || status == 403 { throw Failure.signedOut }
+        if status == 401 || status == 403 {
+            ClaudeCredentials.forget()
+            throw Failure.signedOut
+        }
         guard (200..<300).contains(status) else { throw Failure.rejected(status: status) }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

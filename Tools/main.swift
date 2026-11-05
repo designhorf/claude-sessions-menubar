@@ -13,14 +13,17 @@ app.setActivationPolicy(.accessory)
 struct RenderSheet: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var usage: UsageStore
+    var servers = Fixture.servers
     @State private var flashID: String?
     @State private var flashText = ""
     @State private var showAllIdle: Bool
     @State private var folded: Bool
 
-    init(store: SessionStore, usage: UsageStore, folded: Bool = false, showAllIdle: Bool = false) {
+    init(store: SessionStore, usage: UsageStore, folded: Bool = false, showAllIdle: Bool = false,
+         servers: ServerStore = Fixture.servers) {
         self.store = store
         self.usage = usage
+        self.servers = servers
         _folded = State(initialValue: folded)
         _showAllIdle = State(initialValue: showAllIdle)
     }
@@ -38,7 +41,7 @@ struct RenderSheet: View {
                            glyphSize: Theme.IconSize.settings)
             }
             .padding(.horizontal, Theme.Space.xs)
-            PanelBody(store: store, usage: usage, usageFolded: $folded, flashID: $flashID,
+            PanelBody(store: store, usage: usage, servers: servers, usageFolded: $folded, flashID: $flashID,
                       flashText: $flashText, showAllIdle: $showAllIdle)
         }
         .padding(Theme.Space.panel)
@@ -62,6 +65,17 @@ struct UsageSheet: View {
 
 enum Fixture {
     static let now = Date()
+
+    static func server(_ pid: Int32, _ ports: [Int], _ path: String, days: Double, megabytes: UInt64) -> DevServer {
+        DevServer(pid: pid, ports: ports, cwd: NSHomeDirectory() + "/dev/" + path,
+                  startedAt: now.addingTimeInterval(-days * 24 * 3600), footprint: megabytes * 1_048_576)
+    }
+
+    static let servers = ServerStore(servers: [
+        server(41365, [3000], "designhorf/designhorf-portfolio-2026", days: 5, megabytes: 1934),
+        server(53467, [3003], "_agentic/ferilab-site", days: 14, megabytes: 646),
+        server(43003, [4000], "_agentic/coss/apps/ui", days: 12, megabytes: 9906),
+    ])
 
     static func usage(session: Int, weekly: Int, critical: Bool = false) -> Usage {
         Usage(
@@ -106,6 +120,10 @@ Task { @MainActor in
         render(UsageSheet(usage: UsageStore(usage: usage, phase: phase)), to: "usage-\(name)-open.png")
         render(UsageSheet(usage: UsageStore(usage: usage, phase: phase), folded: true), to: "usage-\(name)-folded.png")
     }
+
+    render(RenderSheet(store: store, usage: UsageStore(usage: normal, phase: .idle), folded: true,
+                       servers: ServerStore()),
+           to: "panel-no-servers.png")
 
     PanelAppearance.dark.apply()
     render(RenderSheet(store: store, usage: UsageStore(usage: normal, phase: .idle))

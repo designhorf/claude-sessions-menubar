@@ -53,6 +53,8 @@ enum Theme {
         /// The Usage row keeps this height open and folded, so nothing in it moves.
         static let usageRow: CGFloat = 24
         static let chevronHitArea: CGFloat = 20
+        /// A button trailing a card row, such as stopping a server.
+        static let rowAction: CGFloat = 26
     }
 
     enum IconSize {
@@ -62,6 +64,7 @@ enum Theme {
         static let settings: CGFloat = 13
         static let refresh: CGFloat = 11
         static let status: CGFloat = 11
+        static let rowAction: CGFloat = 12
     }
 
     enum Radius {

@@ -29,6 +29,12 @@ enum UsageText {
         limit.map { "\($0.percent)%" } ?? "–"
     }
 
+    /// The menu bar title: "A: 12% W: 25%", the 5-hour window and the weekly limit.
+    static func menuBar(_ usage: Usage?) -> String? {
+        guard let usage, usage.session != nil || usage.weekly != nil else { return nil }
+        return "A: \(percent(usage.session)) W: \(percent(usage.weekly))"
+    }
+
     // MARK: - Pieces
 
     static func countdown(_ seconds: TimeInterval) -> String {

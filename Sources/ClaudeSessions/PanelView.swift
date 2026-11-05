@@ -4,6 +4,7 @@ import SwiftUI
 struct PanelView: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var usage: UsageStore
+    @ObservedObject var servers: ServerStore
     @State private var showAllIdle: Bool
     @State private var flashID: String?
     @State private var flashText = ""
@@ -11,9 +12,10 @@ struct PanelView: View {
     @AppStorage("usageFolded") private var usageFolded = false
     @AppStorage(PanelAppearance.storageKey) private var appearance: PanelAppearance = .light
 
-    init(store: SessionStore, usage: UsageStore, showAllIdle: Bool = false) {
+    init(store: SessionStore, usage: UsageStore, servers: ServerStore, showAllIdle: Bool = false) {
         self.store = store
         self.usage = usage
+        self.servers = servers
         _showAllIdle = State(initialValue: showAllIdle)
     }
 
@@ -21,7 +23,7 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: Theme.Space.lg) {
             header
             ScrollView {
-                PanelBody(store: store, usage: usage, usageFolded: $usageFolded,
+                PanelBody(store: store, usage: usage, servers: servers, usageFolded: $usageFolded,
                           flashID: $flashID, flashText: $flashText, showAllIdle: $showAllIdle)
                     .padding(.bottom, Theme.Space.sm)
                     .background(GeometryReader { geometry in
@@ -43,10 +45,19 @@ struct PanelView: View {
         // Whether a MenuBarExtra window re-runs onAppear on every open is not something
         // to rely on, so the window becoming key counts as an open too. The store
         // collapses the two into one request.
-        .onAppear { usage.refresh() }
+        .onAppear { panelOpened() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            usage.refresh()
+            panelOpened()
         }
+        // Closing the panel takes key away from its window, and that stops the scan.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            servers.stopWatching()
+        }
+    }
+
+    private func panelOpened() {
+        usage.refresh()
+        servers.startWatching()
     }
 
     private var header: some View {
@@ -94,6 +105,7 @@ struct PanelView: View {
 struct PanelBody: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var usage: UsageStore
+    @ObservedObject var servers: ServerStore
     @Binding var usageFolded: Bool
     @Binding var flashID: String?
     @Binding var flashText: String
@@ -114,6 +126,7 @@ struct PanelBody: View {
                 SessionList(store: store, flashID: $flashID, flashText: $flashText,
                             showAllIdle: $showAllIdle)
             }
+            ServerList(store: servers)
         }
     }
 }

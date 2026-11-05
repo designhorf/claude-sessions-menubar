@@ -38,6 +38,10 @@ hits=$(grep -rln 'URLSession\|URLRequest' Sources/ | grep -v 'UsageClient.swift'
 hits=$(grep -rnE 'refreshToken|httpMethod|SecItemAdd|SecItemUpdate|SecItemDelete' Sources/ || true)
 [ -z "$hits" ] && pass "credentials read only" || report "credential write or non-GET request" "$hits"
 
+# Stopping a dev server is the one thing the app does to another process, from one file.
+hits=$(grep -rnE '\bkill\(|SIGTERM|SIGKILL' Sources/ | grep -v 'ServerStopper.swift' || true)
+[ -z "$hits" ] && pass "signals only in ServerStopper.swift" || report "signal sent outside ServerStopper.swift" "$hits"
+
 # It has to compile.
 if swiftc -typecheck -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
      -target arm64-apple-macos13.0 Sources/ClaudeSessions/*.swift 2>.build/cs-typecheck; then

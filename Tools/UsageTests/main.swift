@@ -44,5 +44,9 @@ expect(!UsageText.reset(now.addingTimeInterval(3 * 86_400), now: now).contains("
 expect(UsageText.status("Offline", lastGood: nil) == "Offline", "status without old values")
 expect(UsageText.status("Offline", lastGood: parsed).hasPrefix("Offline · "), "status names the age of the old values")
 
+expect(UsageText.menuBar(parsed) == "A: 15% W: 16%", "menu bar title names both limits")
+expect(UsageText.menuBar(flat) == "A: 3% W: –", "menu bar title marks a missing limit")
+expect(UsageText.menuBar(nil) == nil, "no usage, no menu bar title")
+
 print(failures == 0 ? "  ok    usage logic" : "  \(failures) usage expectation(s) failed")
 exit(failures == 0 ? 0 : 1)
