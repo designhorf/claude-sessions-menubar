@@ -29,37 +29,29 @@ struct RenderSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.lg) {
-            HStack {
-                Text("Claude Sessions")
-                    .font(Theme.Typography.panelName)
-                    .foregroundStyle(Theme.Palette.textPrimary)
-                Spacer()
-                RoundGlyph(symbol: PanelAppearance.stored.toggleSymbol, diameter: Theme.Size.settingsButton,
-                           glyphSize: Theme.IconSize.settings)
-                RoundGlyph(symbol: "gearshape", diameter: Theme.Size.settingsButton,
-                           glyphSize: Theme.IconSize.settings)
+        VStack(spacing: 0) {
+            PanelTop(store: store, usage: usage, usageFolded: $folded) {
+                PanelTop<EmptyView>.headerGlyph(PanelAppearance.stored.toggleIcon)
+                PanelTop<EmptyView>.headerGlyph(.gear)
             }
-            .padding(.horizontal, Theme.Space.xs)
-            PanelBody(store: store, usage: usage, servers: servers, usageFolded: $folded, flashID: $flashID,
-                      flashText: $flashText, showAllIdle: $showAllIdle)
+            PanelBody(store: store, servers: servers, flashID: $flashID, flashText: $flashText,
+                      showAllIdle: $showAllIdle)
         }
-        .padding(Theme.Space.panel)
+        .padding(Theme.Space.panelInset)
         .frame(width: Theme.panelWidth)
         .background(Theme.Palette.surface)
     }
 }
 
-/// Only the usage cards, for the states that do not need the session list.
+/// Only the usage block, for the states that do not need the session list.
 struct UsageSheet: View {
     @ObservedObject var usage: UsageStore
     @State var folded = false
 
     var body: some View {
         UsageSection(store: usage, folded: $folded)
-            .padding(Theme.Space.panel)
             .frame(width: Theme.panelWidth)
-            .background(Theme.Palette.surface)
+            .background(Theme.Palette.raised)
     }
 }
 
@@ -87,6 +79,26 @@ enum Fixture {
     }
 }
 
+/// Every icon large and at its real size, so a path the parser got wrong is visible.
+struct IconSheet: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            HStack(spacing: Theme.Space.xl) {
+                ForEach(Array(Icon.allCases.enumerated()), id: \.offset) { _, icon in
+                    IconView(icon: icon, size: 32, tint: Theme.Palette.textPrimary)
+                }
+            }
+            HStack(spacing: Theme.Space.xl) {
+                ForEach(Array(Icon.allCases.enumerated()), id: \.offset) { _, icon in
+                    IconView(icon: icon, tint: Theme.Palette.textPrimary).frame(width: 32)
+                }
+            }
+        }
+        .padding(Theme.Space.xl)
+        .background(Theme.Palette.surface)
+    }
+}
+
 @MainActor
 func render<V: View>(_ view: V, to name: String) {
     let renderer = ImageRenderer(content: view)
@@ -105,6 +117,8 @@ let store = SessionStore()
 Task { @MainActor in
     try? await Task.sleep(nanoseconds: 2_000_000_000)
     print("sessions: \(store.sessions.count)  busy: \(store.busy.count)")
+
+    render(IconSheet(), to: "icons.png")
 
     let normal = Fixture.usage(session: 15, weekly: 16)
     let critical = Fixture.usage(session: 94, weekly: 78, critical: true)

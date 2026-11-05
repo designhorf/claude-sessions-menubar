@@ -24,10 +24,13 @@ machine can see; run it before every commit.
 
 ## Design
 
-Borderless soft grey cards on white, a round bubble leading every row, a thick meter
-with a warm gradient. Adapted from a Mobbin reference; the agreed mockup is
-`docs/usage-design.html`. Every colour, size and radius lives in `Theme.swift`; nothing
-downstream hardcodes a value.
+A raised grey top holds the name, what is running and the usage. Below it short rows split
+by hairlines, each led by an icon. Every colour, size and radius lives in `Theme.swift`;
+nothing downstream hardcodes a value.
+
+The icons are [IBM Carbon](https://github.com/carbon-design-system/carbon/tree/main/packages/icons),
+Apache-2.0, kept as path data in `Icon.swift`; the licence is in
+`docs/third-party/carbon-icons-LICENSE`.
 
 The panel is light by default. The moon and sun button next to the gear switches it to dark
 and back, and the choice is remembered; the system setting is not followed.
@@ -35,7 +38,7 @@ and back, and the choice is remembered; the system setting is not followed.
 The menu bar title reads `1/12  A: 12% W: 25%`: working over open sessions, then the
 5-hour window and the weekly limit.
 
-Usage leads, as one card for the session and the weekly limit. Open, each limit has a
+Usage leads, as one block for the session and the weekly limit. Open, each limit has a
 bar and its reset time, and the header holds the fetch time and a refresh button.
 Folded, it is one line with a ring per limit; the panel remembers the choice. Below it,
 Working and Idle. Idle shows the three most recent sessions and folds the rest behind
@@ -44,7 +47,7 @@ Working and Idle. Idle shows the three most recent sessions and folds the rest b
 ## Servers
 
 Below the sessions, the Servers section lists the local dev servers: project, port, how
-long it has run and how much memory it and its children hold. Clicking a card opens it in
+long it has run and how much memory it and its children hold. Clicking a row opens it in
 the browser; the power button stops it, launcher chain included, so `pnpm dev` does not
 start it again. Stop all asks for a second click. `Tools/ServerProbe` lists the live
 servers from the terminal and, with `--stop <port>`, stops one.

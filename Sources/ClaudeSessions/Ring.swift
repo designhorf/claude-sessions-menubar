@@ -14,10 +14,9 @@ struct Ring: View {
                 .stroke(Theme.Palette.meterTrack, lineWidth: Theme.Size.ringLine)
             Circle()
                 .trim(from: 0, to: fraction)
-                .stroke(isCritical ? Theme.Palette.critical : Theme.Palette.ring,
+                .stroke(isStale ? Theme.Palette.stale : isCritical ? Theme.Palette.critical : Theme.Palette.ring,
                         style: StrokeStyle(lineWidth: Theme.Size.ringLine, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .opacity(isStale ? Theme.Opacity.staleMeter : 1)
         }
         .frame(width: Theme.Size.ring, height: Theme.Size.ring)
     }

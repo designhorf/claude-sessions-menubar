@@ -15,7 +15,7 @@ struct SessionList: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+        VStack(alignment: .leading, spacing: 0) {
             workingSection
             idleSection
         }
@@ -23,16 +23,15 @@ struct SessionList: View {
 
     @ViewBuilder
     private var workingSection: some View {
-        SectionHeader(title: "Working", count: store.busy.count)
+        SectionHeader(title: "Working", count: store.busy.count, isFirst: true)
         if store.busy.isEmpty {
-            BubbleRow(
-                bubble: IconBubble(symbol: "clock"),
+            EmptyRow(
+                icon: .clock,
                 title: "Nothing is working",
                 subtitle: "Sessions show here while Claude runs."
             )
-            .softCard()
         } else {
-            ForEach(store.busy) { card(for: $0) }
+            rows(store.busy)
         }
     }
 
@@ -44,9 +43,16 @@ struct SessionList: View {
                 title: "Idle",
                 count: store.idle.count,
                 actionTitle: foldable ? (showAllIdle ? "Show less" : "Show all") : nil,
-                action: foldable ? { showAllIdle.toggle() } : nil
+                action: foldable ? { withAnimation(Theme.Motion.fold) { showAllIdle.toggle() } } : nil
             )
-            ForEach(visibleIdle) { card(for: $0) }
+            rows(visibleIdle)
+        }
+    }
+
+    private func rows(_ sessions: [Session]) -> some View {
+        ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+            if index > 0 { Hairline() }
+            card(for: session)
         }
     }
 

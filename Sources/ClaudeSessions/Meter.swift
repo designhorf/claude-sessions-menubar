@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A thick rounded bar. The gradient runs inside the filled part; it turns red only
+/// A thin rounded bar. The gradient runs inside the filled part; it turns red only
 /// when the data marks the limit critical.
 struct Meter: View {
     let percent: Int
@@ -15,13 +15,13 @@ struct Meter: View {
                 Capsule().fill(Theme.Palette.meterTrack)
                 Capsule()
                     .fill(LinearGradient(
-                        colors: isCritical ? Theme.Palette.meterCritical : Theme.Palette.meter,
+                        colors: isStale ? [Theme.Palette.stale, Theme.Palette.stale]
+                            : isCritical ? Theme.Palette.meterCritical : Theme.Palette.meter,
                         startPoint: .leading,
                         endPoint: .trailing
                     ))
                     // A 0% bar still shows a sliver, so an empty meter reads as a meter.
                     .frame(width: max(Theme.Size.meter, geometry.size.width * fraction))
-                    .opacity(isStale ? Theme.Opacity.staleMeter : 1)
             }
         }
         .frame(height: Theme.Size.meter)

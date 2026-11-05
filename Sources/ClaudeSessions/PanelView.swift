@@ -20,12 +20,14 @@ struct PanelView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.lg) {
-            header
+        VStack(spacing: 0) {
+            PanelTop(store: store, usage: usage, usageFolded: $usageFolded) {
+                appearanceToggle
+                settingsMenu
+            }
             ScrollView {
-                PanelBody(store: store, usage: usage, servers: servers, usageFolded: $usageFolded,
-                          flashID: $flashID, flashText: $flashText, showAllIdle: $showAllIdle)
-                    .padding(.bottom, Theme.Space.sm)
+                PanelBody(store: store, servers: servers, flashID: $flashID, flashText: $flashText,
+                          showAllIdle: $showAllIdle)
                     .background(GeometryReader { geometry in
                         Color.clear.preference(key: ContentHeightKey.self, value: geometry.size.height)
                     })
@@ -36,7 +38,7 @@ struct PanelView: View {
             .frame(height: min(contentHeight, Theme.listMaxHeight))
             .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
         }
-        .padding(Theme.Space.panel)
+        .padding(Theme.Space.panelInset)
         .frame(width: Theme.panelWidth)
         // The panel window is a vibrant material, so it samples whatever sits behind it
         // and a dark window turns the panel grey. An opaque fill is what makes it light.
@@ -60,25 +62,12 @@ struct PanelView: View {
         servers.startWatching()
     }
 
-    private var header: some View {
-        HStack(spacing: Theme.Space.lg) {
-            Text("Claude Sessions")
-                .font(Theme.Typography.panelName)
-                .foregroundStyle(Theme.Palette.textPrimary)
-            Spacer()
-            appearanceToggle
-            settingsMenu
-        }
-        .padding(.horizontal, Theme.Space.xs)
-    }
-
     private var appearanceToggle: some View {
         Button {
             appearance = appearance.toggled
             appearance.apply()
         } label: {
-            RoundGlyph(symbol: appearance.toggleSymbol, diameter: Theme.Size.settingsButton,
-                       glyphSize: Theme.IconSize.settings)
+            PanelTop<EmptyView>.headerGlyph(appearance.toggleIcon)
         }
         .buttonStyle(.plain)
         .help(appearance.toggleHelp)
@@ -91,37 +80,92 @@ struct PanelView: View {
             Button("Quit Claude Sessions") { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {
-            RoundGlyph(symbol: "gearshape", diameter: Theme.Size.settingsButton,
-                       glyphSize: Theme.IconSize.settings)
+            Image(nsImage: Icon.gear.tintedImage(size: Theme.IconSize.header, color: Theme.Palette.textSecondary))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        .frame(width: Theme.Size.headerButton, height: Theme.Size.headerButton)
+        .help("Settings")
     }
 }
 
-/// Everything below the header. Kept apart from the scroll view and the menu, which
-/// `ImageRenderer` cannot draw, so the render harness can draw this for real.
-struct PanelBody: View {
+/// The raised top: the app's name, what is running, its controls and the usage. It
+/// stays on screen while the rows below it scroll. The controls come from outside
+/// because `ImageRenderer` cannot draw a Menu, so the render harness stands in for them.
+struct PanelTop<Actions: View>: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var usage: UsageStore
-    @ObservedObject var servers: ServerStore
     @Binding var usageFolded: Bool
+    @ViewBuilder var actions: () -> Actions
+
+    static func headerGlyph(_ icon: Icon) -> GlyphControl {
+        GlyphControl(icon: icon, box: Theme.Size.headerButton, glyph: Theme.IconSize.header,
+                     radius: Theme.Radius.control)
+    }
+
+    private var summary: String {
+        store.sessions.isEmpty ? "No sessions" : "\(store.busy.count) working · \(store.idle.count) idle"
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: Theme.Space.xl) {
+                tile
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Claude Sessions")
+                        .font(Theme.Typography.panelName)
+                        .foregroundStyle(Theme.Palette.textPrimary)
+                    Text(summary)
+                        .font(Theme.Typography.headerSub)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                }
+                Spacer(minLength: Theme.Space.sm)
+                HStack(spacing: Theme.Space.xs) { actions() }
+            }
+            .padding(.leading, Theme.Space.xl)
+            .padding(.trailing, Theme.Space.lg)
+            .frame(height: Theme.Size.headerHeight)
+            Hairline()
+            UsageSection(store: usage, folded: $usageFolded)
+        }
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.raised).fill(Theme.Palette.raised))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.raised).strokeBorder(Theme.Palette.divider, lineWidth: Theme.Size.hairline))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.raised))
+    }
+
+    private var tile: some View {
+        IconView(icon: .spark, size: Theme.IconSize.tile, tint: Theme.Palette.textPrimary)
+            .frame(width: Theme.Size.tile, height: Theme.Size.tile)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.tile)
+                    .fill(Theme.Palette.surface)
+                    .shadow(color: .black.opacity(Theme.Opacity.tileShadow),
+                            radius: Theme.Shadow.tileRadius, y: Theme.Shadow.tileOffset)
+            )
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tile).strokeBorder(Theme.Palette.divider, lineWidth: Theme.Size.hairline))
+    }
+}
+
+/// The rows below the raised top. Kept apart from the scroll view, which `ImageRenderer`
+/// cannot draw, so the render harness can draw this for real.
+struct PanelBody: View {
+    @ObservedObject var store: SessionStore
+    @ObservedObject var servers: ServerStore
     @Binding var flashID: String?
     @Binding var flashText: String
     @Binding var showAllIdle: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.lg) {
-            UsageSection(store: usage, folded: $usageFolded)
+        VStack(alignment: .leading, spacing: 0) {
             if store.sessions.isEmpty {
-                SectionHeader(title: "Sessions", count: 0)
-                BubbleRow(
-                    bubble: IconBubble(symbol: "terminal"),
+                SectionHeader(title: "Sessions", count: 0, isFirst: true)
+                EmptyRow(
+                    icon: .terminal,
                     title: "No sessions running",
                     subtitle: "Start Claude Code in a terminal."
                 )
-                .softCard()
             } else {
                 SessionList(store: store, flashID: $flashID, flashText: $flashText,
                             showAllIdle: $showAllIdle)

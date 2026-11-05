@@ -9,7 +9,7 @@ struct ServerList: View {
     private static let confirmWindow = 3.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+        VStack(alignment: .leading, spacing: 0) {
             SectionHeader(
                 title: "Servers",
                 count: store.servers.count,
@@ -17,14 +17,14 @@ struct ServerList: View {
                 action: store.servers.count > 1 ? stopAllTapped : nil
             )
             if store.servers.isEmpty {
-                BubbleRow(
-                    bubble: IconBubble(symbol: "server.rack"),
+                EmptyRow(
+                    icon: .server,
                     title: "No servers running",
                     subtitle: "Dev servers started from a project show here."
                 )
-                .softCard()
             } else {
-                ForEach(store.servers) { server in
+                ForEach(Array(store.servers.enumerated()), id: \.element.id) { index, server in
+                    if index > 0 { Hairline() }
                     ServerCard(server: server, isStopping: store.stopping.contains(server.pid)) {
                         store.stop(server)
                     }

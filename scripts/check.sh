@@ -15,6 +15,10 @@ hits=$(grep -nE 'Color\(hex:|Color\(red:|\.font\(\.system\(size: [0-9]|cornerRad
 [ -z "$hits" ] && pass "no hardcoded colours or sizes outside Theme.swift" \
                 || report "hardcoded value outside Theme.swift" "$hits"
 
+# Every glyph comes from one icon set, so an SF Symbol is a mismatch waiting to be seen.
+hits=$(grep -n 'systemName' $VIEWS || true)
+[ -z "$hits" ] && pass "icons only from Icon.swift" || report "SF Symbol in the panel" "$hits"
+
 # Light and dark live in Theme.Palette; a view never branches on the mode.
 hits=$(grep -rnE 'colorScheme == \.dark|colorScheme == \.light|\.darkAqua' Sources/ \
         | grep -v -e 'Theme.swift' -e 'PanelAppearance.swift' || true)

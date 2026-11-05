@@ -17,8 +17,8 @@ enum PanelAppearance: String {
 
     var colorScheme: ColorScheme { self == .light ? .light : .dark }
 
-    /// The symbol shows the mode a click switches to.
-    var toggleSymbol: String { self == .light ? "moon" : "sun.max" }
+    /// The icon shows the mode a click switches to.
+    var toggleIcon: Icon { self == .light ? .moon : .sun }
     var toggleHelp: String { self == .light ? "Switch to dark" : "Switch to light" }
 
     /// Setting it on the application is what reaches the AppKit window behind the panel;

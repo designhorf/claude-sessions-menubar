@@ -26,7 +26,7 @@ struct ClaudeSessionsApp: App {
             PanelView(store: store, usage: usage, servers: servers)
         } label: {
             HStack(spacing: Theme.Space.sm) {
-                Image(systemName: "sparkle")
+                Image(nsImage: Icon.spark.templateImage(size: Theme.IconSize.menuBar))
                 // Working over total, then the plan usage. With nothing running at all the
                 // ratio would say nothing, so it drops out. One Text, because the menu bar
                 // does not lay out a second one reliably.

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A session as a card. The card body jumps to the terminal tab; the chevron is the
-/// only thing that opens the context line, so a click never does two things at once.
+/// A session as a row. The row body jumps to the terminal tab; the chevron is the only
+/// thing that opens the context line, so a click never does two things at once.
 struct SessionCard: View {
     let session: Session
     @Binding var flashID: String?
@@ -21,27 +21,36 @@ struct SessionCard: View {
     private var isFlashing: Bool { flashID == session.id }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.lg) {
-            BubbleRow(
-                bubble: .sessionState(running: session.isBusy),
+        VStack(alignment: .leading, spacing: 0) {
+            ListRow(
+                icon: session.isBusy ? .play : .stop,
+                iconTint: session.isBusy ? Theme.Palette.running : Theme.Palette.textSecondary,
                 title: session.subject,
-                subtitle: "\(session.projectName) · \(isFlashing ? flashText : session.age)",
-                subtitleColor: isFlashing ? Theme.Palette.textPrimary : Theme.Palette.textSecondary
+                detail: session.projectName,
+                age: session.age,
+                flash: isFlashing ? flashText : nil,
+                action: open
             ) {
-                if session.opening != nil { disclosure }
+                // The slot stays without a chevron too, so every age lines up down the list.
+                if session.opening != nil {
+                    disclosure
+                } else {
+                    Color.clear.frame(width: Theme.Size.miniButton, height: Theme.Size.miniButton)
+                }
             }
 
             if expanded, let opening = session.opening {
                 Text(opening)
-                    .font(Theme.Typography.rowSub)
+                    .font(Theme.Typography.meta)
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, Theme.Size.bubble + Theme.Space.xl)
+                    .padding(.leading, Theme.Space.rowTextIndent)
+                    .padding(.trailing, Theme.Space.xl)
+                    .padding(.bottom, Theme.Space.lg)
+                    .transition(.opacity)
             }
         }
-        .softCard(hoverable: true)
-        .onTapGesture { open() }
         .help(tooltip)
         .contextMenu {
             Button("Copy resume command") { copyResumeCommand() }
@@ -50,10 +59,10 @@ struct SessionCard: View {
 
     private var disclosure: some View {
         Button {
-            withAnimation(.easeOut(duration: 0.12)) { expanded.toggle() }
+            withAnimation(Theme.Motion.disclose) { expanded.toggle() }
         } label: {
             DisclosureChevron(expanded: expanded)
-                .frame(width: Theme.Size.chevronHitArea, height: Theme.Size.chevronHitArea)
+                .frame(width: Theme.Size.miniButton, height: Theme.Size.miniButton)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
